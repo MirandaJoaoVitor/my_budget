@@ -9,7 +9,17 @@ st.set_page_config(
     layout="wide"
 )
 
-col1, col2 = st.columns([1, 5])
+# Custom CSS para ajustar o padding
+st.markdown("""
+    <style>
+        .block-container {
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+col1, col2 = st.columns([1, 6])
 
 with col1:
     st.page_link("app.py", label="Resumo", icon="🏠")
