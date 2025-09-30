@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import json
-import os
+from db import *
 
+# Inicialização do banco de dados
+init_db()
 
 # Configuração do app
 st.set_page_config(
@@ -22,9 +23,6 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Nome do arquivo para salvar os dados do usuário
-ALVO_FILE = "data/oracamento_alvo.json"
-
 # Valores padrão dos sliders
 default_values = {
     "Custos Fixos": 40,
@@ -35,31 +33,7 @@ default_values = {
     "Investimento": 25
 }
 
-# Função para carregar os valores salvos do usuário
-def load_user_data():
-    if os.path.exists(ALVO_FILE):
-        with open(ALVO_FILE, "r") as file:
-            return json.load(file)
-    return default_values.copy()
-
-# Função para salvar os valores atuais
-def save_user_data(data):
-    with open(ALVO_FILE, "w") as file:
-        json.dump(data, file)
-
-# Função para restaurar os valores padrão
-def reset_to_default():
-    save_user_data(default_values)
-    st.session_state.user_data = default_values.copy()
-    st.rerun()
-
-# Carregar os valores do usuário ou padrão
-if "user_data" not in st.session_state:
-    st.session_state.user_data = load_user_data()
-
-# Nome do arquivo para salvar as categorias
-CATEGORIAS_FILE = "data/categorias.json"
-
+# Categorias padrão
 default_categorias = {
     "Receita": ["Salário", "Renda Extra", "Projetos"],
     "Custos Fixos": ["Academia", "Combustível", "IPVA", "Celular", "Barbeiro"],
@@ -71,47 +45,40 @@ default_categorias = {
     "Banco": ["Nubank", "Banco do Brasil", "Caixa", "Dinheiro Vivo"]
 }
 
-# Funções utilitárias
-def load_categorias():
-    if os.path.exists(CATEGORIAS_FILE):
-        with open(CATEGORIAS_FILE, "r") as f:
-            return json.load(f)
-    return default_categorias.copy()
+# Session state inicial
+if "user_data" not in st.session_state:
+    st.session_state.user_data = load_alvo(default_values)
 
-def save_categorias(data):
-    with open(CATEGORIAS_FILE, "w") as f:
-        json.dump(data, f)
-
-# Carregar no session_state ao iniciar
 if "categorias" not in st.session_state:
-    st.session_state.categorias = load_categorias()
+    st.session_state.categorias = load_categorias(default_categorias)
 
 
-# Criar layout da sidebar
+# Layout da sidebar
 col1, col2 = st.columns([1, 6])
 
 with col1:
     st.page_link("app.py", label="Resumo", icon="🧮")
-    st.page_link("pages/1_settings.py", label="Configuração", icon="⚙️")
-    st.page_link("pages/2_teste.py", label="Teste", icon="🧪")
+    st.page_link("pages/1_lancamentos.py", label="Lançamentos", icon="📥")
+    st.page_link("pages/2_settings.py", label="Configuração", icon="⚙️")
+    st.page_link("pages/3_teste.py", label="Teste", icon="🧪")
 
 with col2:
+    ## Orçamento Alvo ----------
     with st.container(border=True):
         col11, col12 = st.columns([2, 1])
-
         with col11:
             st.markdown("#### 🎯 Orçamento Alvo")
             st.markdown("""
-                Ajuste os percentuais para cada categoria de despesa. 
+                Ajuste os percentuais para cada categoria. 
                 """)
-
         with col12:
             salvar = st.button("Salvar", use_container_width=True)
             if st.button("Restaurar Padrão", use_container_width=True):
-                reset_to_default()
+                st.session_state.user_data = default_values.copy()
+                save_alvo(default_values)
+                st.rerun()
 
         coll21, coll22 = st.columns([2, 1])
-
         with coll21:
             with st.container(border=True):
                 values = {}
@@ -162,12 +129,12 @@ with col2:
         if salvar:
             if total == 100:
                 st.session_state.user_data = values
-                save_user_data(values)
+                save_alvo(values)
                 st.success("Configuração salva com sucesso! 💾")
             else:
                 st.error("Não é possível salvar: o total deve ser exatamente 100%.")
     
-
+    ## Categorias ----------
     with st.container(border=True):
         # Cabeçalho
         header_left, btn1_col, btn2_col = st.columns([2, 1, 1])
@@ -198,7 +165,7 @@ with col2:
             despesas_editados = {}
             for i, title in enumerate(desp_titles):
                 with cols[i]:
-                    st.markdown(f"**{title}**")
+                    #st.markdown(f"**{title}**")
                     df = pd.DataFrame({title: st.session_state.categorias.get(title, [])})
                     despesas_editados[title] = st.data_editor(
                         df,

@@ -117,6 +117,8 @@ def on_tipo_change():
         st.session_state["categoria_val"] = "Transferência"
 
 # ---------- inicialização ----------
+
+
 st.set_page_config(page_title="Lançamentos", layout="wide")
 conn = init_db()
 cats = load_categorias()
