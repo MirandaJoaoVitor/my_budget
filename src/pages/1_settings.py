@@ -62,7 +62,13 @@ CATEGORIAS_FILE = "data/categorias.json"
 
 default_categorias = {
     "Receita": ["Salário", "Renda Extra", "Projetos"],
-    "Despesa": ["Custos Fixos", "Custos Variáveis", "Metas", "Lazer", "Educação", "Investimento"]
+    "Custos Fixos": ["Academia", "Combustível", "IPVA", "Celular", "Barbeiro"],
+    "Custos Variáveis": ["Compras", "Cuidados", "Imprevistos", "Veículo", "Alimentação", "Saúde"],
+    "Metas": ["Reserva de Emergência", "Viagem", "Compras"],
+    "Lazer": ["Festa", "Saída", "Rolê"],
+    "Educação": ["Livro", "Curso", "Material", "Fundo"],
+    "Investimento": ["Ações", "Renda Fixa", "Fundos Imobiliários", "Exterior", "Criptomoedas"],
+    "Banco": ["Nubank", "Banco do Brasil", "Caixa", "Dinheiro Vivo"]
 }
 
 # Funções utilitárias
@@ -85,7 +91,7 @@ if "categorias" not in st.session_state:
 col1, col2 = st.columns([1, 6])
 
 with col1:
-    st.page_link("app.py", label="Resumo", icon="🏠")
+    st.page_link("app.py", label="Resumo", icon="🧮")
     st.page_link("pages/1_settings.py", label="Configuração", icon="⚙️")
     st.page_link("pages/2_teste.py", label="Teste", icon="🧪")
 
@@ -163,29 +169,81 @@ with col2:
     
 
     with st.container(border=True):
-        st.markdown("### 🗂️ Categorias")
+        # Cabeçalho
+        header_left, btn1_col, btn2_col = st.columns([2, 1, 1])
+        with header_left:
+            st.markdown("#### 🗂️ Categorias")
+        with btn1_col:
+            salvar_cats = st.button("Salvar Categorias", use_container_width=True)
+        with btn2_col:
+            restaurar_cats = st.button("Restaurar Categorias Padrão", use_container_width=True)
 
-        # Editor de Receitas
-        st.subheader("💰 Receitas")
-        receitas_df = pd.DataFrame({"Categoria": st.session_state.categorias["Receita"]})
-        receitas_editadas = st.data_editor(receitas_df, num_rows="dynamic", use_container_width=True)
+        # Abas de edição
+        tabs = st.tabs(["💰 Receitas", "💸 Despesas", "📈 Investimentos & Banco"])
 
-        # Editor de Despesas
-        st.subheader("💸 Despesas")
-        despesas_df = pd.DataFrame({"Categoria": st.session_state.categorias["Despesa"]})
-        despesas_editadas = st.data_editor(despesas_df, num_rows="dynamic", use_container_width=True)
+        # Aba Receitas
+        with tabs[0]:
+            receitas_df = pd.DataFrame({"Receitas": st.session_state.categorias.get("Receita", [])})
+            receitas_editadas = st.data_editor(
+                receitas_df,
+                num_rows="dynamic",
+                key="receitas_editor",
+                use_container_width=True
+            )
 
-        # Botões
-        colA, colB = st.columns(2)
-        with colA:
-            if st.button("Salvar Categorias", use_container_width=True):
-                st.session_state.categorias["Receita"] = receitas_editadas["Categoria"].dropna().tolist()
-                st.session_state.categorias["Despesa"] = despesas_editadas["Categoria"].dropna().tolist()
-                save_categorias(st.session_state.categorias)
-                st.success("Categorias salvas em arquivo! ✅")
+        # Aba Despesas (5 colunas)
+        with tabs[1]:
+            desp_titles = ["Custos Fixos", "Custos Variáveis", "Metas", "Lazer", "Educação"]
+            cols = st.columns(len(desp_titles))
+            despesas_editados = {}
+            for i, title in enumerate(desp_titles):
+                with cols[i]:
+                    st.markdown(f"**{title}**")
+                    df = pd.DataFrame({title: st.session_state.categorias.get(title, [])})
+                    despesas_editados[title] = st.data_editor(
+                        df,
+                        num_rows="dynamic",
+                        key=f"desp_{title}",
+                        use_container_width=True
+                    )
 
-        with colB:
-            if st.button("Restaurar Categorias Padrão", use_container_width=True):
-                st.session_state.categorias = default_categorias.copy()
-                save_categorias(default_categorias)
-                st.rerun()
+        # Aba Investimentos e Banco
+        with tabs[2]:
+            left, right = st.columns([1, 1])
+            with left:
+                investimento_df = pd.DataFrame({"Investimento": st.session_state.categorias.get("Investimento", [])})
+                investimento_editadas = st.data_editor(
+                    investimento_df,
+                    num_rows="dynamic",
+                    key="investimento_editor",
+                    use_container_width=True
+                )
+            with right:
+                banco_df = pd.DataFrame({"Banco": st.session_state.categorias.get("Banco", [])})
+                banco_editadas = st.data_editor(
+                    banco_df,
+                    num_rows="dynamic",
+                    key="banco_editor",
+                    use_container_width=True
+                )
+
+        # Ações dos botões (agora alinhados com o título)
+        if salvar_cats:
+            # Receitas
+            st.session_state.categorias["Receita"] = receitas_editadas["Receitas"].dropna().tolist()
+
+            # Despesas (cada título)
+            for title, df in despesas_editados.items():
+                st.session_state.categorias[title] = df[title].dropna().tolist()
+
+            # Investimento e Banco
+            st.session_state.categorias["Investimento"] = investimento_editadas["Investimento"].dropna().tolist()
+            st.session_state.categorias["Banco"] = banco_editadas["Banco"].dropna().tolist()
+
+            save_categorias(st.session_state.categorias)
+            st.success("Categorias salvas com sucesso! 💾")
+
+        if restaurar_cats:
+            st.session_state.categorias = default_categorias.copy()
+            save_categorias(default_categorias)
+            st.rerun()

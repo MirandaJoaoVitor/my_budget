@@ -22,7 +22,7 @@ st.markdown("""
 col1, col2 = st.columns([1, 6])
 
 with col1:
-    st.page_link("app.py", label="Resumo", icon="🏠")
+    st.page_link("app.py", label="Resumo", icon="🧮")
     st.page_link("pages/1_settings.py", label="Configuração", icon="⚙️")
     st.page_link("pages/2_teste.py", label="Teste", icon="🧪")
 
