@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 from datetime import date, datetime
 import uuid
 from db import *
@@ -8,7 +7,12 @@ from db import *
 init_db()
 conn = get_connection()
 
-st.set_page_config(page_title="My Budget", page_icon="💰", layout="wide")
+# Configuração do app
+st.set_page_config(
+    page_title="My Budget",
+    page_icon="💰",
+    layout="wide"
+)
 
 st.markdown("""
     <style>
@@ -16,7 +20,21 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Categorias padrão (apenas como fallback)
+default_categorias = {
+    "Receita": ["Salário", "Renda Extra", "Projetos"],
+    "Custos Fixos": ["Academia", "Combustível", "IPVA", "Celular", "Barbeiro"],
+    "Custos Variáveis": ["Compras", "Cuidados", "Imprevistos", "Veículo", "Alimentação", "Saúde"],
+    "Metas": ["Reserva de Emergência", "Viagem", "Compras"],
+    "Lazer": ["Festa", "Saída", "Rolê"],
+    "Educação": ["Livro", "Curso", "Material", "Fundo"],
+    "Investimento": ["Ações", "Renda Fixa", "Fundos Imobiliários", "Exterior", "Criptomoedas"],
+    "Banco": ["Nubank", "Banco do Brasil", "Caixa", "Dinheiro Vivo"]
+}
 
+# Inicializa categorias no session_state a partir do banco, se ainda não existir
+if "categorias" not in st.session_state:
+    st.session_state.categorias = load_categorias(default_categorias)
 
 # -------- Layout --------
 col1, col2 = st.columns([1, 6])
@@ -29,35 +47,42 @@ with col1:
 with col2:
     # ----- Formulário -----
     with st.container(border=True):
-        st.markdown("#### 📥 Adicionar Lançamentos")
+        # cabeçalho
+        cab_a, cab_b = st.columns([3,1])
+
+        cab_a.markdown("#### 📥 Adicionar Lançamentos")
+
+        salvar = cab_b.button("🚀 Adicionar lançamento", use_container_width=True)
 
         # Linha 1
         c1, c2, c3, c4 = st.columns([1,1,1,1])
         data = c1.date_input("Data", date.today())
         tipo = c2.selectbox("Tipo", ["Receita","Despesa","Investimento","Transferência"])
-        bancos = st.session_state.categorias.get("Banco", [])
 
-        if tipo in ["Transferência", "Investimento"]:
-            de_banco = c3.selectbox("De", bancos)
-            para_banco = c4.selectbox("Para", bancos)
+        if tipo == "Despesa":
+            categoria = c3.selectbox("Categoria", ["Custos Fixos","Custos Variáveis","Metas","Lazer","Educação"])
+            subcategoria = c4.selectbox("Subcategoria", st.session_state.categorias.get(categoria, []))
         else:
-            banco = c3.selectbox("Banco", bancos)
-            para_banco = None
+            categoria = c3.selectbox("Categoria", st.session_state.categorias.get(tipo, []))
+            subcategoria = c4.selectbox("Subcategoria", st.session_state.categorias.get(categoria, []), disabled=True)
 
         # Linha 2
-        c5, c6, c7, c8 = st.columns([1,1,1,2])
-        if tipo == "Despesa":
-            grupo = c5.selectbox("Grupo", ["Custos Fixos","Custos Variáveis","Metas","Lazer","Educação"])
-            categoria = grupo
-            subcategoria = c6.selectbox("Subcategoria", st.session_state.categorias.get(grupo, []))
-        else:
-            categoria = c5.selectbox("Categoria", st.session_state.categorias.get(tipo, []))
-            subcategoria = ""
+        c5, c6, c7, c8 = st.columns([1,1,1,1])
+        
+        bancos = st.session_state.categorias.get("Banco", [])
 
-        valor = c7.number_input("Valor", min_value=0.0, step=0.01)
+        valor = c5.number_input("Valor", min_value=0.0, step=0.01)
+
+        if tipo in ["Transferência", "Investimento"]:
+            de_banco = c6.selectbox("De", bancos)
+            para_banco = c7.selectbox("Para", bancos)
+        else:
+            banco = c6.selectbox("Banco", bancos)
+            para_banco = c7.selectbox("Para", bancos, disabled=True)
+
+
         descricao = c8.text_input("Descrição")
 
-        salvar = st.button("Salvar", use_container_width=True)
 
         if salvar:
             # ---------------- Transferência ----------------
@@ -143,7 +168,8 @@ with col2:
                         "descricao": descricao
                     }
                     insert_transacao(tx)
-                    st.success("Receita registrada com sucesso!")
+                    st.success(f"Receita de R$ {valor:,.2f} registrada em {banco}")
+
 
                 # ---------------- Despesa ----------------
                 elif tipo == "Despesa":
@@ -158,14 +184,14 @@ with col2:
                         "descricao": descricao
                     }
                     insert_transacao(tx)
-                    st.success("Despesa registrada com sucesso!")
+                    st.success(f"Despesa de R$ {valor:,.2f} registrada em {banco}")
 
 
-    # ----- Listagem -----
+    # ----- Transações -----
     with st.container(border=True):
         st.markdown("#### 💲 Transações")
         df = load_transacoes()
-
+        
         if not df.empty:
             df_disp = df.copy()
             df_disp["valor"] = df_disp["valor"].map(lambda x: f"R$ {x:,.2f}")
@@ -188,5 +214,3 @@ with col2:
                 st.rerun()
         else:
             st.info("Nenhum lançamento encontrado.")
-
-
