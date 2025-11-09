@@ -20,29 +20,16 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Categorias padrão (apenas como fallback)
-default_categorias = {
-    "Receita": ["Salário", "Renda Extra", "Projetos"],
-    "Custos Fixos": ["Academia", "Combustível", "IPVA", "Celular", "Barbeiro"],
-    "Custos Variáveis": ["Compras", "Cuidados", "Imprevistos", "Veículo", "Alimentação", "Saúde"],
-    "Metas": ["Reserva de Emergência", "Viagem", "Compras"],
-    "Lazer": ["Festa", "Saída", "Rolê"],
-    "Educação": ["Livro", "Curso", "Material", "Fundo"],
-    "Investimento": ["Ações", "Renda Fixa", "Fundos Imobiliários", "Exterior", "Criptomoedas"],
-    "Banco": ["Nubank", "Banco do Brasil", "Caixa", "Dinheiro Vivo"]
-}
-
-# Inicializa categorias no session_state a partir do banco, se ainda não existir
-if "categorias" not in st.session_state:
-    st.session_state.categorias = load_categorias(default_categorias)
 
 # -------- Layout --------
 col1, col2 = st.columns([1, 6])
 with col1:
-    st.page_link("app.py", label="Resumo", icon="🧮")
-    st.page_link("pages/1_lancamentos.py", label="Lançamentos", icon="📥")
-    st.page_link("pages/2_settings.py", label="Configuração", icon="⚙️")
-    st.page_link("pages/3_teste.py", label="Teste", icon="🧪")
+    with st.container(border=True):
+        st.markdown("<p style='text-align: center'><b>Menu</b></p>", unsafe_allow_html=True)
+        st.page_link("app.py", label="Resumo", icon="🧮")
+        st.page_link("pages/1_lancamentos.py", label="Lançamentos", icon="📥")
+        st.page_link("pages/2_settings.py", label="Configuração", icon="⚙️")
+        st.page_link("pages/3_teste.py", label="Teste", icon="🧪")
 
 with col2:
     # ----- Formulário -----
@@ -71,7 +58,7 @@ with col2:
         
         bancos = st.session_state.categorias.get("Banco", [])
 
-        valor = c5.number_input("Valor", min_value=0.0, step=0.01)
+        valor = c5.number_input("Valor", min_value=0.0, step=50.0)
 
         if tipo in ["Transferência", "Investimento"]:
             de_banco = c6.selectbox("De", bancos)
@@ -189,13 +176,27 @@ with col2:
 
     # ----- Transações -----
     with st.container(border=True):
-        st.markdown("#### 💲 Transações")
+        col1, col2, col3 = st.columns([4, 1, 1])
+
+        with col1:
+            st.markdown("#### 💲 Transações")
+
         df = load_transacoes()
         
         if not df.empty:
             df_disp = df.copy()
             df_disp["valor"] = df_disp["valor"].map(lambda x: f"R$ {x:,.2f}")
             df_disp["Excluir?"] = False
+            
+            with col2:
+                # Checkbox para selecionar tudo
+                select_all = st.checkbox("Selecionar todos", value=False, key="select_all")
+
+                if select_all:
+                    df_disp["Excluir?"] = True
+            
+            with col3:
+                excluir_selec = st.button("Excluir selecionados", use_container_width=True)
 
             # Exibir tabela sem a coluna id
             edited = st.data_editor(
@@ -206,9 +207,11 @@ with col2:
             )
 
             # Mapear IDs dos registros marcados para exclusão
-            excluir_ids = df.loc[edited["Excluir?"], "id"].tolist()
+            # Usar posições (iloc) para garantir alinhamento correto
+            excluir_positions = [i for i, v in enumerate(edited["Excluir?"].tolist()) if v]
+            excluir_ids = df.iloc[excluir_positions]["id"].tolist()
 
-            if excluir_ids and st.button("Excluir selecionados"):
+            if excluir_ids and excluir_selec:
                 delete_transacoes(excluir_ids)
                 st.success(f"{len(excluir_ids)} lançamentos excluídos.")
                 st.rerun()

@@ -26,23 +26,23 @@ st.markdown("""
 # Valores padrão dos sliders
 default_values = {
     "Custos Fixos": 40,
-    "Custos Variáveis": 20,
-    "Metas": 5,
-    "Lazer": 5,
+    "Custos Variáveis": 15,
+    "Metas": 10,
+    "Lazer": 10,
     "Educação": 5,
-    "Investimento": 25
+    "Investimento": 20
 }
 
 # Categorias padrão
 default_categorias = {
-    "Receita": ["Salário", "Renda Extra", "Projetos"],
-    "Custos Fixos": ["Academia", "Combustível", "IPVA", "Celular", "Barbeiro"],
-    "Custos Variáveis": ["Compras", "Cuidados", "Imprevistos", "Veículo", "Alimentação", "Saúde"],
+    "Receita": ["Salário/Renda principal", "Freelancer/Serviços", "Bônus/Comissões", "Reembolsos", "Outros/Extras"],
+    "Custos Fixos": ["Aluguel", "Condomínio", "Internet/Telefone", "Energia", "Água", "Transporte/Combustível", "Supermercado", "Mensalidades"],
+    "Custos Variáveis": ["Compras pessoais", "Cuidados pessoais", "Imprevistos", "Transporte/Veículo", "Alimentação fora"],
     "Metas": ["Reserva de Emergência", "Viagem", "Compras"],
-    "Lazer": ["Festa", "Saída", "Rolê"],
-    "Educação": ["Livro", "Curso", "Material", "Fundo"],
+    "Lazer": ["Restaurantes e bares", "Viagens e passeios", "Cinema, shows e eventos", "Hobbies"],
+    "Educação": ["Curso online", "Livros e materiais", "Workshops e Eventos", "Mentoria", "Fundo de estudo"],
     "Investimento": ["Ações", "Renda Fixa", "Fundos Imobiliários", "Exterior", "Criptomoedas"],
-    "Banco": ["Nubank", "Banco do Brasil", "Caixa", "Dinheiro Vivo"]
+    "Banco": ["Caixa", "Bradesco", "NuBank", "Banco do Brasil", "Dinheiro Vivo"]
 }
 
 # Session state inicial
@@ -57,10 +57,12 @@ if "categorias" not in st.session_state:
 col1, col2 = st.columns([1, 6])
 
 with col1:
-    st.page_link("app.py", label="Resumo", icon="🧮")
-    st.page_link("pages/1_lancamentos.py", label="Lançamentos", icon="📥")
-    st.page_link("pages/2_settings.py", label="Configuração", icon="⚙️")
-    st.page_link("pages/3_teste.py", label="Teste", icon="🧪")
+    with st.container(border=True):
+        st.markdown("<p style='text-align: center'><b>Menu</b></p>", unsafe_allow_html=True)
+        st.page_link("app.py", label="Resumo", icon="🧮")
+        st.page_link("pages/1_lancamentos.py", label="Lançamentos", icon="📥")
+        st.page_link("pages/2_settings.py", label="Configuração", icon="⚙️")
+        st.page_link("pages/3_teste.py", label="Teste", icon="🧪")
 
 with col2:
     ## Orçamento Alvo ----------
@@ -145,11 +147,12 @@ with col2:
         with btn2_col:
             restaurar_cats = st.button("Restaurar Categorias Padrão", use_container_width=True)
 
-        # Abas de edição
-        tabs = st.tabs(["💰 Receitas", "💸 Despesas", "📈 Investimentos & Banco"])
+        
+        col1, col2, col3 = st.columns(3)
 
-        # Aba Receitas
-        with tabs[0]:
+        #Receitas
+        with col1:
+            st.markdown("<p style='text-align: center'><b>💰 Receitas</b></p>", unsafe_allow_html=True)
             receitas_df = pd.DataFrame({"Receitas": st.session_state.categorias.get("Receita", [])})
             receitas_editadas = st.data_editor(
                 receitas_df,
@@ -158,39 +161,41 @@ with col2:
                 use_container_width=True
             )
 
-        # Aba Despesas (5 colunas)
-        with tabs[1]:
-            desp_titles = ["Custos Fixos", "Custos Variáveis", "Metas", "Lazer", "Educação"]
-            cols = st.columns(len(desp_titles))
-            despesas_editados = {}
-            for i, title in enumerate(desp_titles):
-                with cols[i]:
-                    #st.markdown(f"**{title}**")
-                    df = pd.DataFrame({title: st.session_state.categorias.get(title, [])})
-                    despesas_editados[title] = st.data_editor(
-                        df,
-                        num_rows="dynamic",
-                        key=f"desp_{title}",
-                        use_container_width=True
-                    )
+        # Investimentos
+        with col2:
+            st.markdown("<p style='text-align: center'><b>📈 Investimentos</b></p>", unsafe_allow_html=True)
+            investimento_df = pd.DataFrame({"Investimento": st.session_state.categorias.get("Investimento", [])})
+            investimento_editadas = st.data_editor(
+                investimento_df,
+                num_rows="dynamic",
+                key="investimento_editor",
+                use_container_width=True
+            )
 
-        # Aba Investimentos e Banco
-        with tabs[2]:
-            left, right = st.columns([1, 1])
-            with left:
-                investimento_df = pd.DataFrame({"Investimento": st.session_state.categorias.get("Investimento", [])})
-                investimento_editadas = st.data_editor(
-                    investimento_df,
+        # Banco
+        with col3:
+            st.markdown("<p style='text-align: center'><b>🏦 Banco</b></p>", unsafe_allow_html=True)
+            banco_df = pd.DataFrame({"Banco": st.session_state.categorias.get("Banco", [])})
+            banco_editadas = st.data_editor(
+                banco_df,
+                num_rows="dynamic",
+                key="banco_editor",
+                use_container_width=True
+            )
+
+        # Despesas
+        st.markdown("<p style='text-align: center'><b>💸 Despesas</b></p>", unsafe_allow_html=True)
+        desp_titles = ["Custos Fixos", "Custos Variáveis", "Metas", "Lazer", "Educação"]
+        cols = st.columns(len(desp_titles))
+        despesas_editados = {}
+        for i, title in enumerate(desp_titles):
+            with cols[i]:
+                #st.markdown(f"**{title}**")
+                df = pd.DataFrame({title: st.session_state.categorias.get(title, [])})
+                despesas_editados[title] = st.data_editor(
+                    df,
                     num_rows="dynamic",
-                    key="investimento_editor",
-                    use_container_width=True
-                )
-            with right:
-                banco_df = pd.DataFrame({"Banco": st.session_state.categorias.get("Banco", [])})
-                banco_editadas = st.data_editor(
-                    banco_df,
-                    num_rows="dynamic",
-                    key="banco_editor",
+                    key=f"desp_{title}",
                     use_container_width=True
                 )
 
