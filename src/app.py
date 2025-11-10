@@ -152,32 +152,56 @@ with col2:
 
     with col42:
         rows = []
-        # percorre categorias do alvo (Custos Fixos, Custos Variáveis, Metas, Lazer, Educação, Investimento, ...)
         for cat, perc in alvo.items():
-            # alvo em valor baseado na receita do período
             alvo_valor = total_receita * (perc / 100) if total_receita > 0 else 0.0
-            # gasto real: somar transações do período com essa categoria (Despesa e Investimento quando aplicável)
             mask = (df["categoria"] == cat) & (df["tipo"].isin(["Despesa", "Investimento"]))
             gasto_valor = - df.loc[mask, "valor"].sum() if not df.loc[mask].empty else 0.0
-            pct_usado = (gasto_valor / alvo_valor * 100) if (alvo_valor > 0) else None
+
+            # percentual gasto em relação à receita total
+            pct_usado_total = (gasto_valor / total_receita * 100) if total_receita > 0 else None
+
             rows.append({
                 "Categoria": cat,
                 "Valor Gasto (R$)": round(gasto_valor, 2),
                 "Valor Alvo (R$)": round(alvo_valor, 2),
                 "Percentual Alvo (%)": perc,
-                "% Usado": None if pct_usado is None else round(pct_usado, 2)
+                "% Receita Usado": None if pct_usado_total is None else round(pct_usado_total, 2)
             })
-        
+
         budget_df = pd.DataFrame(rows)
+
+        # Função da barra (baseada no percentual da receita total)
+        def barra_progresso(pct_usado, pct_alvo, width=10):
+            if pct_usado is None:
+                return "—"
+
+            # define cor conforme o desvio do alvo
+            if pct_usado < pct_alvo * 0.8:
+                bloco = "🟩"
+            elif pct_usado <= pct_alvo * 1.0:
+                bloco = "🟨"
+            else:
+                bloco = "🟥"
+
+            # barra proporcional (10 blocos)
+            filled = int(width * min(pct_usado / pct_alvo, 1))
+            filled = min(filled, width)
+            empty = width - filled
+
+            return f"{bloco * filled}{'⬜' * empty} {pct_usado:.0f} / {pct_alvo:.0f}%"
+
         if not budget_df.empty:
-            # formatar para exibição
             display_df = budget_df.copy()
-            display_df["Valor Alvo (R$)"] = display_df["Valor Alvo (R$)"].map(lambda x: f"R$ {x:,.2f}")
-            display_df["Valor Gasto (R$)"] = display_df["Valor Gasto (R$)"].map(lambda x: f"R$ {x:,.2f}")
-            display_df["% Usado"] = display_df["% Usado"].map(lambda x: f"{x:.2f}%" if pd.notna(x) else "—")
-            
+            display_df["Gasto"] = display_df["Valor Gasto (R$)"].map(lambda x: f"R$ {x:,.2f}")
+            display_df["Alvo"] = display_df["Valor Alvo (R$)"].map(lambda x: f"R$ {x:,.2f}")
+
+            display_df["Utilizado / Alvo (%)"] = display_df.apply(
+                lambda row: barra_progresso(row["% Receita Usado"], row["Percentual Alvo (%)"]),
+                axis=1
+            )
+
             st.dataframe(
-                display_df.rename(columns={"Categoria":"Categoria","Percentual Alvo (%)":"% Alvo","Valor Alvo (R$)":"Alvo","Valor Gasto (R$)":"Gasto"}),
+                display_df[["Categoria", "Gasto", "Alvo", "Utilizado / Alvo (%)"]],
                 use_container_width=True,
                 hide_index=True
             )
@@ -195,5 +219,44 @@ with col2:
         else:
             st.info("Nenhuma transação encontrada para calcular saldo por banco até a data selecionada.")
 
+st.divider()
 
-df
+# -------------------------------
+# DETALHAMENTO DO ORÇAMENTO
+# -------------------------------
+st.markdown("#### 📊 Detalhamento do Orçamento por Categoria")
+
+# Filtrar apenas despesas e investimentos
+df_despesas = df[df["tipo"].isin(["Despesa", "Investimento"])]
+
+if df_despesas.empty:
+    st.info("Nenhuma despesa encontrada no período selecionado.")
+else:
+    # Agrupa e mostra por categoria
+    for cat in df_despesas["categoria"].unique():
+        st.markdown(f"### {cat}")
+
+        # Agrupar por subcategoria e somar
+        sub_df = (
+            df_despesas[df_despesas["categoria"] == cat]
+            .groupby("subcategoria", dropna=False)["valor"]
+            .sum()
+            .reset_index()
+        )
+
+        # Formatar valores
+        sub_df["valor_fmt"] = sub_df["valor"].map(lambda x: f"R$ {-x:,.2f}")
+
+        # Substituir NaN por “Outros”
+        sub_df["subcategoria"] = sub_df["subcategoria"].fillna("Outros")
+
+        # Ordenar
+        sub_df = sub_df.sort_values("valor", ascending=True)
+
+        # Mostrar em tabela
+        st.dataframe(
+            sub_df[["subcategoria", "valor_fmt"]]
+                .rename(columns={"subcategoria": "Subcategoria", "valor_fmt": "Valor"}),
+            use_container_width=True,
+            hide_index=True
+        )
