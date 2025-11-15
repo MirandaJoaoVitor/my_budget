@@ -53,7 +53,23 @@ with col1:
         st.page_link("app.py", label="Resumo", icon="🧮")
         st.page_link("pages/1_lancamentos.py", label="Lançamentos", icon="📥")
         st.page_link("pages/2_settings.py", label="Configuração", icon="⚙️")
-        st.page_link("pages/3_teste.py", label="Teste", icon="🧪")
+
+    with st.container(border=True):
+        st.markdown("<p style='text-align: center'><b>Sobre</b></p>", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div style='text-align: center; font-size: 13px; opacity: 0.7;'>
+                <a href='https://github.com/SEU_USUARIO/SEU_REPOSITORIO' target='_blank' style='text-decoration: none;'>
+                    📦 Repositório no GitHub
+                </a>
+                <br>
+                © 2025 Todos os direitos reservados.
+                <br>
+                <br>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 with col2:
     with st.container(border=True):
@@ -122,7 +138,7 @@ with col2:
             # percentual despesas / receitas
             percentual = (total_despesas / total_receita) * 100 if total_receita != 0 else 0
 
-            st.markdown("🎯 Percentual")
+            st.markdown("🎯 Percentual Gasto")
             st.markdown(f"<p style='text-align: right; font-size: 34px; line-height: 0.5;'>{percentual:.2f} %</p>", unsafe_allow_html=True)
     
     with col34:
@@ -219,44 +235,64 @@ with col2:
         else:
             st.info("Nenhuma transação encontrada para calcular saldo por banco até a data selecionada.")
 
-st.divider()
+    st.divider()
 
-# -------------------------------
-# DETALHAMENTO DO ORÇAMENTO
-# -------------------------------
-st.markdown("#### 📊 Detalhamento do Orçamento por Categoria")
+    # -------------------------------
+    # DETALHAMENTO DO ORÇAMENTO
+    # -------------------------------
+    st.markdown("#### 📊 Detalhamento do Orçamento por Categoria")
 
-# Filtrar apenas despesas e investimentos
-df_despesas = df[df["tipo"].isin(["Despesa", "Investimento"])]
-
-if df_despesas.empty:
-    st.info("Nenhuma despesa encontrada no período selecionado.")
-else:
-    # Agrupa e mostra por categoria
-    for cat in df_despesas["categoria"].unique():
-        st.markdown(f"### {cat}")
-
-        # Agrupar por subcategoria e somar
-        sub_df = (
-            df_despesas[df_despesas["categoria"] == cat]
-            .groupby("subcategoria", dropna=False)["valor"]
+    def tabela_detalhe(nome_cat):
+        # Filtrar apenas despesas/investimentos da categoria
+        filtro = df[(df["categoria"] == nome_cat) & (df["tipo"].isin(["Despesa", "Investimento"]))]
+        
+        if filtro.empty:
+            st.info("Sem lançamentos.")
+            return
+        
+        # Agrupar por subcategoria
+        tab = (
+            filtro.groupby("subcategoria")["valor"]
             .sum()
             .reset_index()
+            .sort_values("valor")
         )
 
-        # Formatar valores
-        sub_df["valor_fmt"] = sub_df["valor"].map(lambda x: f"R$ {-x:,.2f}")
-
-        # Substituir NaN por “Outros”
-        sub_df["subcategoria"] = sub_df["subcategoria"].fillna("Outros")
-
-        # Ordenar
-        sub_df = sub_df.sort_values("valor", ascending=True)
-
-        # Mostrar em tabela
+        tab["Valor (R$)"] = tab["valor"].map(lambda x: f"R$ {abs(x):,.2f}")
+        tab = tab.rename(columns={"subcategoria": "Subcategoria"})
+        
         st.dataframe(
-            sub_df[["subcategoria", "valor_fmt"]]
-                .rename(columns={"subcategoria": "Subcategoria", "valor_fmt": "Valor"}),
+            tab[["Subcategoria", "Valor (R$)"]],
             use_container_width=True,
             hide_index=True
         )
+
+
+    col51, col52, col53 = st.columns(3)
+
+    with col51:
+        st.markdown("**🟩 Custos Fixos**")
+        tabela_detalhe("Custos Fixos")
+
+    with col52:
+        st.markdown("**🟪 Custos Variáveis**")
+        tabela_detalhe("Custos Variáveis")
+
+    with col53:
+        st.markdown("**🟥 Metas**")
+        tabela_detalhe("Metas")
+
+
+    col61, col62, col63 = st.columns(3)
+
+    with col61:
+        st.markdown("**🟦 Lazer**")
+        tabela_detalhe("Lazer")
+
+    with col62:
+        st.markdown("**🟧 Educação**")
+        tabela_detalhe("Educação")
+
+    with col63:
+        st.markdown("**🟨 Investimento**")
+        tabela_detalhe("Investimento")

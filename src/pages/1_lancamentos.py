@@ -20,6 +20,25 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# ========= Inicialização segura do session_state ========= #
+
+# categorias
+if "categorias" not in st.session_state:
+    st.session_state.categorias = load_categorias({
+        "Receita": [],
+        "Custos Fixos": [],
+        "Custos Variáveis": [],
+        "Metas": [],
+        "Lazer": [],
+        "Educação": [],
+        "Investimento": [],
+        "Banco": []
+    })
+
+# alvo do orçamento (opcional, mas recomendado)
+if "user_data" not in st.session_state:
+    st.session_state.user_data = load_alvo({})
+
 
 # -------- Layout --------
 col1, col2 = st.columns([1, 6])
@@ -29,7 +48,6 @@ with col1:
         st.page_link("app.py", label="Resumo", icon="🧮")
         st.page_link("pages/1_lancamentos.py", label="Lançamentos", icon="📥")
         st.page_link("pages/2_settings.py", label="Configuração", icon="⚙️")
-        st.page_link("pages/3_teste.py", label="Teste", icon="🧪")
 
 with col2:
     # ----- Formulário -----
@@ -49,9 +67,15 @@ with col2:
         if tipo == "Despesa":
             categoria = c3.selectbox("Categoria", ["Custos Fixos","Custos Variáveis","Metas","Lazer","Educação"])
             subcategoria = c4.selectbox("Subcategoria", st.session_state.categorias.get(categoria, []))
+
+        elif tipo == "Investimento":
+            categoria = c3.selectbox("Categoria", "Investimento", disabled=True)
+            subcategoria = c4.selectbox("Tipo de Investimento", st.session_state.categorias.get("Investimento", []))
+
         else:
             categoria = c3.selectbox("Categoria", st.session_state.categorias.get(tipo, []))
             subcategoria = c4.selectbox("Subcategoria", st.session_state.categorias.get(categoria, []), disabled=True)
+
 
         # Linha 2
         c5, c6, c7, c8 = st.columns([1,1,1,1])
@@ -60,7 +84,7 @@ with col2:
 
         valor = c5.number_input("Valor", min_value=0.0, step=50.0)
 
-        if tipo in ["Transferência", "Investimento"]:
+        if tipo in "Transferência":
             de_banco = c6.selectbox("De", bancos)
             para_banco = c7.selectbox("Para", bancos)
         else:
@@ -104,43 +128,21 @@ with col2:
 
                 # ---------------- Investimento ----------------
                 elif tipo == "Investimento":
-                    transfer_id = str(uuid.uuid4())
-                    categoria = "Investimento"
-                    subcategoria = ""
 
-                    if de_banco == para_banco:
-                        # Apenas 1 lançamento (saída)
-                        tx = {
-                            "tipo": tipo,
-                            "data": data.isoformat(),
-                            "valor": -valor,
-                            "categoria": categoria,
-                            "subcategoria": subcategoria,
-                            "banco": de_banco,
-                            "id_transferencia": None,
-                            "descricao": descricao
-                        }
-                        insert_transacao(tx)
-                        st.success(f"Investimento registrado no próprio banco {de_banco}")
-                    else:
-                        # Dois lançamentos (saída + entrada)
-                        tx_out = {
-                            "tipo": tipo,
-                            "data": data.isoformat(),
-                            "valor": -valor,
-                            "categoria": categoria,
-                            "subcategoria": subcategoria,
-                            "banco": de_banco,
-                            "id_transferencia": transfer_id,
-                            "descricao": descricao
-                        }
-                        tx_in = tx_out.copy()
-                        tx_in["valor"] = valor
-                        tx_in["banco"] = para_banco
+                    # investimento sempre: 1 lançamento (saída)
+                    tx = {
+                        "tipo": tipo,
+                        "data": data.isoformat(),
+                        "valor": -valor,
+                        "categoria": categoria,   
+                        "subcategoria": subcategoria,  
+                        "banco": banco,     
+                        "id_transferencia": None,
+                        "descricao": descricao
+                    }
 
-                        insert_transacao(tx_out)
-                        insert_transacao(tx_in)
-                        st.success(f"Investimento registrado: {de_banco} → {para_banco}")
+                    insert_transacao(tx)
+                    st.success(f"Investimento registrado em {subcategoria} (banco {banco})")
 
                 # ---------------- Receita ----------------
                 elif tipo == "Receita":

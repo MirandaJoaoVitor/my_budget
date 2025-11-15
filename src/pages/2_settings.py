@@ -62,7 +62,6 @@ with col1:
         st.page_link("app.py", label="Resumo", icon="🧮")
         st.page_link("pages/1_lancamentos.py", label="Lançamentos", icon="📥")
         st.page_link("pages/2_settings.py", label="Configuração", icon="⚙️")
-        st.page_link("pages/3_teste.py", label="Teste", icon="🧪")
 
 with col2:
     ## Orçamento Alvo ----------
