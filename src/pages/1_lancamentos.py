@@ -69,7 +69,7 @@ with col2:
             subcategoria = c4.selectbox("Subcategoria", st.session_state.categorias.get(categoria, []))
 
         elif tipo == "Investimento":
-            categoria = c3.selectbox("Categoria", "Investimento", disabled=True)
+            categoria = c3.selectbox("Categoria", ["Investimento"], disabled=True)
             subcategoria = c4.selectbox("Tipo de Investimento", st.session_state.categorias.get("Investimento", []))
 
         else:
@@ -84,7 +84,7 @@ with col2:
 
         valor = c5.number_input("Valor", min_value=0.0, step=50.0)
 
-        if tipo in "Transferência":
+        if tipo == "Transferência":
             de_banco = c6.selectbox("De", bancos)
             para_banco = c7.selectbox("Para", bancos)
         else:

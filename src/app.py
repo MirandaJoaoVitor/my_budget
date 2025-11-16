@@ -123,7 +123,7 @@ with col2:
             total_receita = df.loc[df["tipo"] == "Receita", "valor"].sum() if not df.empty else 0.0
 
             st.markdown("💰 Receitas")
-            st.markdown(f"<p style='text-align: right; font-size: 34px; line-height: 0.5;'>R$ {total_receita:.2f}</p>", unsafe_allow_html=True) #color: #00B050
+            st.markdown(f"<p style='text-align: right; font-size: 34px; line-height: 0.5;'>R$ {total_receita:,.2f}</p>", unsafe_allow_html=True) #color: #00B050
 
     with col32:
         with st.container(border=True):
@@ -131,7 +131,7 @@ with col2:
             total_despesas = - df.loc[df["tipo"].isin(["Despesa", "Investimento"]), "valor"].sum() if not df.empty else 0.0
 
             st.markdown("💸 Despesas")
-            st.markdown(f"<p style='text-align: right; font-size: 34px; line-height: 0.5;'>R$ {total_despesas:.2f}</p>", unsafe_allow_html=True) #color: #FF0000
+            st.markdown(f"<p style='text-align: right; font-size: 34px; line-height: 0.5;'>R$ {total_despesas:,.2f}</p>", unsafe_allow_html=True) #color: #FF0000
     
     with col33:
         with st.container(border=True):
@@ -147,7 +147,7 @@ with col2:
             saldo_periodo = df["valor"].sum() if not df.empty else 0.0
 
             st.markdown("📊 Saldo")
-            st.markdown(f"<p style='text-align: right; font-size: 34px; line-height: 0.5;'>R$ {saldo_periodo:.2f}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: right; font-size: 34px; line-height: 0.5;'>R$ {saldo_periodo:,.2f}</p>", unsafe_allow_html=True)
 
     col41, col42, col43 = st.columns([1, 2, 1])
 
