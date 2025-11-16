@@ -3,6 +3,27 @@ from datetime import date, datetime
 import uuid
 from db import *
 
+# Função para obter bancos com saldo positivo
+def bancos_com_saldo_positivo():
+    df = load_transacoes()
+    if df.empty:
+        return []
+
+    df_bancos = df.groupby("banco")["valor"].sum().reset_index()
+    return df_bancos[df_bancos["valor"] > 0]["banco"].tolist()
+
+# Retorna saldo atual do banco 
+def saldo_banco(banco):
+    df = load_transacoes()
+    if df.empty or banco is None:
+        return 0.0
+    if banco == "Nenhum banco com saldo":
+        return 0.0
+    if "banco" not in df.columns or "valor" not in df.columns:
+        return 0.0
+    saldo = df[df["banco"] == banco]["valor"].sum()
+    return float(saldo)
+
 # Inicialização
 init_db()
 conn = get_connection()
@@ -80,18 +101,56 @@ with col2:
         # Linha 2
         c5, c6, c7, c8 = st.columns([1,1,1,1])
         
-        bancos = st.session_state.categorias.get("Banco", [])
+        # Carregar bancos
+        bancos_todos = st.session_state.categorias.get("Banco", [])
+        # dicionário com saldos por banco
+        bank_saldos = {b: saldo_banco(b) for b in bancos_todos}
+
+        # labels com saldo para exibição no selectbox
+        bancos_todos_labels = [f"{b} (Saldo: R$ {bank_saldos.get(b, 0.0):,.2f})" for b in bancos_todos]
+        # mapeamento label -> banco original
+        label_to_bank = {lbl: b for lbl, b in zip(bancos_todos_labels, bancos_todos)}
+
+        # bancos com saldo positivo (labels)
+        bancos_positivos = [b for b, s in bank_saldos.items() if s > 0]
+        bancos_positivos_labels = [f"{b} (Saldo: R$ {bank_saldos.get(b, 0.0):,.2f})" for b in bancos_positivos]
 
         valor = c5.number_input("Valor", min_value=0.0, step=50.0)
 
-        if tipo == "Transferência":
-            de_banco = c6.selectbox("De", bancos)
-            para_banco = c7.selectbox("Para", bancos)
-        else:
-            banco = c6.selectbox("Banco", bancos)
-            para_banco = c7.selectbox("Para", bancos, disabled=True)
+        # ----------------- RECEITA -----------------
+        if tipo == "Receita":
+            selected_label = c6.selectbox("Banco", bancos_todos_labels if bancos_todos_labels else ["Nenhum banco cadastrado"])
+            banco = label_to_bank.get(selected_label, selected_label)
+            para_banco =  c7.selectbox("Para", bancos_todos_labels if bancos_todos_labels else ["Nenhum banco cadastrado"], disabled=True)
+            para_banco = label_to_bank.get(para_banco, para_banco)
 
+        # -------------- DESPESA / INVESTIMENTO -----------------
+        elif tipo in ["Despesa", "Investimento"]:
+            if bancos_positivos_labels:
+                selected_label = c6.selectbox("Banco", bancos_positivos_labels)
+                banco = label_to_bank.get(selected_label, selected_label)
+            else:
+                selected_label = c6.selectbox("Banco", ["Nenhum banco com saldo"])
+                banco = selected_label  # será tratado como sem saldo
+            para_banco = c7.selectbox("Para", bancos_todos_labels if bancos_todos_labels else ["Nenhum banco cadastrado"], disabled=True)
+            para_banco = label_to_bank.get(para_banco, para_banco)
 
+        # ----------------- TRANSFERÊNCIA -----------------
+        elif tipo == "Transferência":
+            if bancos_positivos_labels:
+                de_label = c6.selectbox("De", bancos_positivos_labels)
+            else:
+                de_label = c6.selectbox("De", ["Nenhum banco com saldo"])
+            de_banco = label_to_bank.get(de_label, de_label)
+
+            # montar opções de destino excluindo o banco de origem
+            para_options = [lbl for lbl in bancos_todos_labels if label_to_bank.get(lbl) != de_banco]
+            if not para_options:
+                para_options = ["Nenhum banco disponível"]
+            para_label = c7.selectbox("Para", para_options)
+            para_banco = label_to_bank.get(para_label, para_label)
+
+        # Descrição
         descricao = c8.text_input("Descrição")
 
 
@@ -104,27 +163,35 @@ with col2:
                     if de_banco == para_banco:
                         st.error("Banco de origem e destino não podem ser iguais.")
                     else:
-                        transfer_id = str(uuid.uuid4())
-                        categoria = "Transferência"
-                        subcategoria = ""
+                        # trava: não permitir transferir mais do que o saldo do banco de origem
+                        if de_banco == "Nenhum banco com saldo":
+                            st.error("Não há banco com saldo disponível para realizar a transferência.")
+                        else:
+                            disponivel = saldo_banco(de_banco)
+                            if valor > disponivel:
+                                st.error(f"Saldo insuficiente em {de_banco}: R$ {disponivel:,.2f}")
+                            else:
+                                transfer_id = str(uuid.uuid4())
+                                categoria = "Transferência"
+                                subcategoria = ""
 
-                        tx_out = {
-                            "tipo": tipo,
-                            "data": data.isoformat(),
-                            "valor": -valor,
-                            "categoria": categoria,
-                            "subcategoria": subcategoria,
-                            "banco": de_banco,
-                            "id_transferencia": transfer_id,
-                            "descricao": descricao
-                        }
-                        tx_in = tx_out.copy()
-                        tx_in["valor"] = valor
-                        tx_in["banco"] = para_banco
+                                tx_out = {
+                                    "tipo": tipo,
+                                    "data": data.isoformat(),
+                                    "valor": -valor,
+                                    "categoria": categoria,
+                                    "subcategoria": subcategoria,
+                                    "banco": de_banco,
+                                    "id_transferencia": transfer_id,
+                                    "descricao": descricao
+                                }
+                                tx_in = tx_out.copy()
+                                tx_in["valor"] = valor
+                                tx_in["banco"] = para_banco
 
-                        insert_transacao(tx_out)
-                        insert_transacao(tx_in)
-                        st.success(f"Transferência registrada: {de_banco} → {para_banco}")
+                                insert_transacao(tx_out)
+                                insert_transacao(tx_in)
+                                st.success(f"Transferência registrada: {de_banco} → {para_banco}")
 
                 # ---------------- Investimento ----------------
                 elif tipo == "Investimento":
