@@ -195,21 +195,28 @@ with col2:
 
                 # ---------------- Investimento ----------------
                 elif tipo == "Investimento":
+                    # Validar saldo disponível
+                    if banco == "Nenhum banco com saldo":
+                        st.error("Não há banco com saldo disponível para realizar o investimento.")
+                    else:
+                        disponivel = saldo_banco(banco)
+                        if valor > disponivel:
+                            st.error(f"Saldo insuficiente em {banco}: R$ {disponivel:,.2f}")
+                        else:
+                            # investimento sempre: 1 lançamento (saída)
+                            tx = {
+                                "tipo": tipo,
+                                "data": data.isoformat(),
+                                "valor": -valor,
+                                "categoria": categoria,   
+                                "subcategoria": subcategoria,  
+                                "banco": banco,     
+                                "id_transferencia": None,
+                                "descricao": descricao
+                            }
 
-                    # investimento sempre: 1 lançamento (saída)
-                    tx = {
-                        "tipo": tipo,
-                        "data": data.isoformat(),
-                        "valor": -valor,
-                        "categoria": categoria,   
-                        "subcategoria": subcategoria,  
-                        "banco": banco,     
-                        "id_transferencia": None,
-                        "descricao": descricao
-                    }
-
-                    insert_transacao(tx)
-                    st.success(f"Investimento registrado em {subcategoria} (banco {banco})")
+                            insert_transacao(tx)
+                            st.success(f"Investimento registrado em {subcategoria} (banco {banco})")
 
                 # ---------------- Receita ----------------
                 elif tipo == "Receita":
@@ -229,18 +236,26 @@ with col2:
 
                 # ---------------- Despesa ----------------
                 elif tipo == "Despesa":
-                    tx = {
-                        "tipo": tipo,
-                        "data": data.isoformat(),
-                        "valor": -valor,  # negativo
-                        "categoria": categoria,
-                        "subcategoria": subcategoria,
-                        "banco": banco,
-                        "id_transferencia": None,
-                        "descricao": descricao
-                    }
-                    insert_transacao(tx)
-                    st.success(f"Despesa de R$ {valor:,.2f} registrada em {banco}")
+                    # Validar saldo disponível
+                    if banco == "Nenhum banco com saldo":
+                        st.error("Não há banco com saldo disponível para realizar a despesa.")
+                    else:
+                        disponivel = saldo_banco(banco)
+                        if valor > disponivel:
+                            st.error(f"Saldo insuficiente em {banco}: R$ {disponivel:,.2f}")
+                        else:
+                            tx = {
+                                "tipo": tipo,
+                                "data": data.isoformat(),
+                                "valor": -valor,  # negativo
+                                "categoria": categoria,
+                                "subcategoria": subcategoria,
+                                "banco": banco,
+                                "id_transferencia": None,
+                                "descricao": descricao
+                            }
+                            insert_transacao(tx)
+                            st.success(f"Despesa de R$ {valor:,.2f} registrada em {banco}")
 
 
     # ----- Transações -----

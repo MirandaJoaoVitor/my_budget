@@ -59,7 +59,7 @@ with col1:
         st.markdown(
             """
             <div style='text-align: center; font-size: 13px; opacity: 0.7;'>
-                <a href='https://github.com/SEU_USUARIO/SEU_REPOSITORIO' target='_blank' style='text-decoration: none;'>
+                <a href='https://github.com/MirandaJoaoVitor/my_budget' target='_blank' style='text-decoration: none;'>
                     📦 Repositório no GitHub
                 </a>
                 <br>
